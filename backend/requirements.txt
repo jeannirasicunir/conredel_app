@@ -1,0 +1,9 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14.0
+gunicorn>=21.0.0
+django-filter==23.5          # Pinned version that works with Django 4.2
+django-ratelimit>=4.1.0
+python-dotenv>=1.0.0
+prometheus-client>=0.17.1
+requests>=2.31.0
+django-extensions>=3.2.3

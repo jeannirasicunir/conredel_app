@@ -1,0 +1,64 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  scrape_timeout: 4s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'backend'
+    metrics_path: '/api/health/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+
+  - job_name: 'backend-status'
+    metrics_path: '/api/status/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+      
+  - job_name: 'backend-requests'
+    metrics_path: '/api/metrics/requests/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+
+  - job_name: 'backend-general-metrics'
+    metrics_path: '/api/metrics/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+
+  - job_name: 'backend-slow-requests'
+    metrics_path: '/api/metrics/slow-requests/prometheus/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+
+  - job_name: 'backend-error-requests'
+    metrics_path: '/api/metrics/errors/prometheus/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
+      
+  - job_name: 'backend-rate-limit'
+    metrics_path: '/api/metrics/rate-limit/prometheus/'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    static_configs:
+      - targets: ['localhost:8000']  # Since they're in the same task, we can use localhost
