@@ -2,9 +2,9 @@ name: "ECR-ECS-Monitoring-Deployment"
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       parameter-name:
@@ -21,7 +21,7 @@ jobs:
   initialize-ecr:
     name: Initialize ECR Repositories
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - name: Configure AWS credentials
@@ -69,7 +69,7 @@ jobs:
     name: Build and Push to ECR
     needs: [test, initialize-ecr]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v2
@@ -119,7 +119,7 @@ jobs:
     name: Terraform Apply
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v2
@@ -375,7 +375,7 @@ jobs:
     name: Deploy to ECS
     needs: terraform
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     # Add a delay to allow AWS resources to be fully created
     concurrency: 
