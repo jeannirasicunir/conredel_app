@@ -1,0 +1,126 @@
+name: "Destroy AWS Infrastructure"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm deletion of all AWS resources'
+        required: true
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'destroy'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.4.2
+
+    - name: Terraform Init
+      working-directory: ./deployment/terraform
+      env:
+        TF_VAR_django_secret_key: ${{ secrets.DJANGO_SECRET_KEY }}
+        TF_VAR_django_debug: "False"
+        TF_VAR_django_allowed_hosts: "*"
+        TF_VAR_api_token: ${{ secrets.API_TOKEN }}
+        TF_VAR_app_name: "monitoring"
+        TF_VAR_environment: "production"
+        TF_VAR_desired_count: "1"
+      run: terraform init -input=false
+
+    - name: Remove DynamoDB lock table from Terraform state
+      working-directory: ./deployment/terraform
+      env:
+        TF_VAR_django_secret_key: ${{ secrets.DJANGO_SECRET_KEY }}
+        TF_VAR_django_debug: "False"
+        TF_VAR_django_allowed_hosts: "*"
+        TF_VAR_api_token: ${{ secrets.API_TOKEN }}
+        TF_VAR_app_name: "monitoring"
+        TF_VAR_environment: "production"
+        TF_VAR_desired_count: "1"
+      run: |
+        echo "Removing DynamoDB table from Terraform state to allow destroy..."
+        terraform state rm aws_dynamodb_table.terraform_lock || true
+        terraform state rm data.aws_dynamodb_table.terraform_lock || true
+
+    - name: Clear Terraform state lock
+      run: |
+        echo "Clearing any existing Terraform state lock..."
+        aws dynamodb delete-item \
+          --table-name terraform-lock-table \
+          --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}' \
+          2>/dev/null || true
+
+    - name: Terraform Destroy
+      working-directory: ./deployment/terraform
+      env:
+        TF_VAR_django_secret_key: ${{ secrets.DJANGO_SECRET_KEY }}
+        TF_VAR_django_debug: "False"
+        TF_VAR_django_allowed_hosts: "*"
+        TF_VAR_api_token: ${{ secrets.API_TOKEN }}
+        TF_VAR_app_name: "monitoring"
+        TF_VAR_environment: "production"
+        TF_VAR_desired_count: "1"
+      run: |
+        terraform destroy -auto-approve -input=false
+
+    - name: Delete DynamoDB lock table
+      run: |
+        echo "Deleting DynamoDB lock table..."
+        aws dynamodb delete-table --table-name terraform-lock-table 2>/dev/null && \
+          echo "DynamoDB table deleted" || \
+          echo "DynamoDB table not found or already deleted"
+
+    - name: Delete Terraform state from S3
+      run: |
+        echo "Deleting Terraform state file from S3 (bucket itself is preserved)..."
+        aws s3 rm s3://monitoring-terraform-state-819743217287/monitoring.tfstate 2>/dev/null && \
+          echo "State file deleted" || \
+          echo "State file not found or already deleted"
+
+    - name: Destruction summary
+      run: |
+        echo "============================================"
+        echo "  INFRASTRUCTURE DESTROYED"
+        echo "============================================"
+        echo ""
+        echo "  Deleted resources:"
+        echo "  - ECS cluster and services"
+        echo "  - ECR repositories and images"
+        echo "  - ALB and target groups"
+        echo "  - VPC, subnets, security groups"
+        echo "  - IAM roles and policies"
+        echo "  - CloudWatch log groups"
+        echo "  - DynamoDB lock table"
+        echo "  - Terraform state file (S3)"
+        echo ""
+        echo "  Preserved:"
+        echo "  - S3 bucket: monitoring-terraform-state-819743217287"
+        echo ""
+        echo "============================================"
+
+  cancelled:
+    name: Destroy Cancelled
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm != 'destroy'
+    steps:
+    - name: Abort
+      run: |
+        echo "Destroy cancelled: confirmation input did not match 'destroy'."
+        echo "To proceed, re-run the workflow and type exactly: destroy"
+        exit 1

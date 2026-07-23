@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      parameter-name:
-        description: 'Start Manual Workflow'
-        required: true
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -495,3 +491,56 @@ jobs:
           echo "Timeout waiting for services to be healthy"
           exit 1
         fi
+
+    - name: Print deployment summary and validate endpoints
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: ${{ env.AWS_REGION }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+      run: |
+        LB_DNS=$(aws elbv2 describe-load-balancers \
+          --region "$AWS_REGION" \
+          --names monitoring-alb \
+          --query 'LoadBalancers[0].DNSName' \
+          --output text)
+
+        echo "============================================"
+        echo "  DEPLOYMENT SUMMARY"
+        echo "============================================"
+        echo ""
+        echo "  Backend API : http://$LB_DNS:8000"
+        echo "  Prometheus  : http://$LB_DNS:9090"
+        echo "  Grafana     : http://$LB_DNS:3000"
+        echo ""
+        echo "============================================"
+        echo ""
+
+        echo "--- Validating Backend health endpoint ---"
+        RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "http://$LB_DNS:8000/api/health/")
+        BODY=$(echo "$RESPONSE" | sed -e 's/HTTP_STATUS:.*//')
+        STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+        echo "Response body   : $BODY"
+        echo "HTTP status code: $STATUS"
+        [ "$STATUS" = "200" ] && echo "✔ Backend OK" || { echo "✘ Backend returned unexpected status $STATUS"; exit 1; }
+
+        echo ""
+        echo "--- Validating Prometheus health endpoint ---"
+        RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "http://$LB_DNS:9090/-/healthy")
+        STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+        echo "HTTP status code: $STATUS"
+        [ "$STATUS" = "200" ] && echo "✔ Prometheus OK" || { echo "✘ Prometheus returned unexpected status $STATUS"; exit 1; }
+
+        echo ""
+        echo "--- Validating Grafana health endpoint ---"
+        RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "http://$LB_DNS:3000/api/health")
+        BODY=$(echo "$RESPONSE" | sed -e 's/HTTP_STATUS:.*//')
+        STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+        echo "Response body   : $BODY"
+        echo "HTTP status code: $STATUS"
+        [ "$STATUS" = "200" ] && echo "✔ Grafana OK" || { echo "✘ Grafana returned unexpected status $STATUS"; exit 1; }
+
+        echo ""
+        echo "============================================"
+        echo "  ALL SERVICES HEALTHY - DEPLOYMENT DONE"
+        echo "============================================"
