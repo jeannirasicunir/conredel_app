@@ -234,12 +234,12 @@ jobs:
         echo "Checking for existing state lock..."
         if aws dynamodb get-item \
           --table-name terraform-lock-table \
-          --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}' \
+          --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}' \
           --output json | grep -q "Item"; then
           echo "Found existing lock, removing it..."
           aws dynamodb delete-item \
             --table-name terraform-lock-table \
-            --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}'
+            --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}'
           echo "Lock removed"
           sleep 10  # Wait a moment for consistency
         else
@@ -263,12 +263,12 @@ jobs:
         check_and_clear_lock() {
           if aws dynamodb get-item \
             --table-name terraform-lock-table \
-            --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}' \
+            --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}' \
             --output json 2>/dev/null | grep -q "Item"; then
             echo "Found existing lock, removing it..."
             aws dynamodb delete-item \
               --table-name terraform-lock-table \
-              --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}'
+              --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}'
             echo "Lock removed"
             sleep 5
           fi
@@ -319,12 +319,12 @@ jobs:
         check_and_clear_lock() {
           if aws dynamodb get-item \
             --table-name terraform-lock-table \
-            --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}' \
+            --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}' \
             --output json 2>/dev/null | grep -q "Item"; then
             echo "Found existing lock, removing it..."
             aws dynamodb delete-item \
               --table-name terraform-lock-table \
-              --key '{"LockID": {"S": "monitoring-terraform-state-jn2025/monitoring.tfstate"}}'
+              --key '{"LockID": {"S": "monitoring-terraform-state-819743217287/monitoring.tfstate"}}'
             echo "Lock removed"
             sleep 5
           fi

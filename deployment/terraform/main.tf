@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "monitoring-terraform-state-jn2025"
+    bucket         = "monitoring-terraform-state-819743217287"
     key            = "monitoring.tfstate"
     region         = "us-east-1"
     encrypt        = true
